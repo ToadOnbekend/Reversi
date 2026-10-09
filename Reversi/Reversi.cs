@@ -1,15 +1,7 @@
-﻿using System;
-using System.Drawing;
+using System;
 using System.Windows.Forms;
+using System.Drawing;
 
-public class Program
-{
-    static void Main(string[] str)
-{
-    Application.Run(new Reversi());
-
-}
-}
 public class Reversi : Form
 {
     Button Nieuwspel;
@@ -30,14 +22,22 @@ public class Reversi : Form
     int diameter_steen = 45;
 
     int afstand_lijnen = 50;
+
     int Grootte = 8; 
+
+
 
     Gameloop gameloop;
     Steen[,] map_stenen;
     public Reversi()
     {   
         ClientSize = new Size(800,600);
-     
+        Spelbord = new Label();
+        Spelbord.Size = new Size(500, 500);
+        Spelbord.Location = new Point (000, 000);
+
+        Spelbord.Paint += TekenspelBord;
+
 
         menuStrip = new MenuStrip();
         menu = new ToolStripDropDownButton("Guide");
@@ -53,7 +53,6 @@ public class Reversi : Form
         menu = new ToolStripDropDownButton("Help!");
         menuStrip.Items.Add(menu);
 
-
         Spelbord = new Label();
         Spelbord.Size = new Size(500, 500);
         Spelbord.Location = new Point (60, 60);
@@ -61,8 +60,7 @@ public class Reversi : Form
         player1 = new Label();
         player2 = new Label();
 
-        player1.Text = $"Player 1 Stenen";
-        player2.Text = $"Player 2 Stenen:";
+
         player1.ForeColor = Color.Red;
         player2.ForeColor = Color.Blue;
 
@@ -77,16 +75,11 @@ public class Reversi : Form
         Controls.Add(menuStrip);
     
         Spelbord.Paint += TekenspelBord;
-        // Spelbord.MouseClick += (object o, MouseEventArgs mea) =>
-        // {
-        //     Console.WriteLine("In veld geklikt");
-            
-            
-        // };
-            
+        gameloop = new Gameloop(this);
+
         this.Controls.Add(Spelbord);    
 
-        int[] speler_plek_begin = [2,1,1,2];
+        int[] speler_plek_begin = new int[] {2,1,1,2};
         int w = 0;
         map_stenen = new Steen[Grootte, Grootte];
                 for(int t = 0; t < Grootte; t++)
@@ -97,8 +90,10 @@ public class Reversi : Form
                 if (i>=Grootte){
                    Console.WriteLine("Beak--");
                    break;}
+                
+         
                 map_stenen[i, t] = new Steen(
-                                              new Point((i+1)*afstand_lijnen+1, (t+1)*afstand_lijnen+1),
+                                             new Point((i+1)*afstand_lijnen+1, (t+1)*afstand_lijnen+1),
                                               new Size(afstand_lijnen-1, afstand_lijnen-1),
                                               diameter_steen,
                                               (i, t), 
@@ -115,10 +110,13 @@ public class Reversi : Form
                 Spelbord.Controls.Add(map_stenen[i,t]);
 
             }}
-            
+            player1.Text = $"Player 1 Stenen: {getAantalStenen(1)} ";
+            player2.Text = $"Player 2 Stenen: {getAantalStenen(2)}";
+   
             
 
     }
+
     public void TekenspelBord(object o, PaintEventArgs pea)
     {   
         Graphics gr = pea.Graphics;
@@ -130,13 +128,44 @@ public class Reversi : Form
         }
     }
 
-    public void ontvangen((int, int) a){
-        Console.WriteLine($"\e[31ma: {a}\e[0m");
+    public void zet_alle_stenen_op_niet_aanklikbaar()
+    {
+        foreach (Steen steen in map_stenen)
+        {
+            steen.set_aanklikbaar(false);
+        }
     }
 
 
+    public void ontvangen((int, int) a, Steen s){
+        Console.WriteLine($"[31ma: {a}[0m");
+        int wissel_speler = gameloop.wissel_speler();
+        Console.WriteLine($"Speler nu aanzet: {wissel_speler}");
+        s.geef_state(wissel_speler);
+           player1.Text = $"Player 1 Stenen: {getAantalStenen(1)} ";
+        player2.Text = $"Player 2 Stenen: {getAantalStenen(2)}";
+        
+        // zet_alle_stenen_op_niet_aanklikbaar();
+    }
+
+
+  public int getAantalStenen(int color)
+{
+    int res = 0;
+
+    for (int i = 0; i < map_stenen.GetLength(0); i++)
+    {
+        for (int t = 0; t < map_stenen.GetLength(1); t++)
+        {
+            if (map_stenen[i, t] != null && map_stenen[i, t].geef_state_terug() == color)
+                res++;
+        }
+    }
+
+    return res;
+
 }
-public class Steen: Label
+    public class Steen: Label
 {
     int state = 0; //Lege staat = 0
     int diameter;
@@ -160,11 +189,8 @@ public class Steen: Label
         Console.WriteLine(this.Location.X + "Location" + this.Location.Y);
         this.MouseClick += Teken;
         this.Paint += Teken;
-        steen_aanklikbaar = true;
-        
-    }
-
-
+        steen_aanklikbaar = true;  
+    } 
 
     public void Teken(object o, PaintEventArgs pea)
     {   
@@ -185,30 +211,6 @@ public class Steen: Label
         }
 
     }
-    public int getStenen(int color)
-    {
-        color = state;
-        int stenen = 2; // default
-
-        if (color == 1)
-        {
-             for(int i = 0; i > stenen; i++)
-            {
-                stenen = stenen + i;
-            }
-        }
-        else if (color == 2)
-        {
-             for(int i = 0; i > stenen; i++)
-            {
-                    stenen = stenen + i;
-            }
-        } else
-        {
-            return 0;
-        }
-        return stenen;
-    }
     public void Teken(object o, MouseEventArgs mea)
     {
         if (steen_aanklikbaar){
@@ -217,6 +219,7 @@ public class Steen: Label
             this.Invalidate();
         }
     }
+
     
     public void vertel_positie()
     {
@@ -239,3 +242,4 @@ public class Steen: Label
     }
 }
 
+}

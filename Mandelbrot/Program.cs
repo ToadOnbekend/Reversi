@@ -10,9 +10,8 @@ public class Reversi : Form
     Label Spelbord;
     Label Wie_aanzet;
     ComboBox Bordgrootte;
-    int[,] Stenen;
 
-    int diameter_steen = 20;
+    int diameter_steen = 45;
 
     int afstand_lijnen = 50;
 
@@ -25,8 +24,16 @@ public class Reversi : Form
         Spelbord = new Label();
         Spelbord.Size = new Size(500, 500);
         Spelbord.Location = new Point (000, 000);
-        this.Controls.Add(Spelbord);
+
         Spelbord.Paint += TekenspelBord;
+        // Spelbord.MouseClick += (object o, MouseEventArgs mea) =>
+        // {
+        //     Console.WriteLine("In veld geklikt");
+            
+            
+        // };
+            
+        this.Controls.Add(Spelbord);    
         map_stenen = new Steen[Grootte, Grootte];
                 for(int t = 0; t < Grootte; t++)
         {
@@ -37,15 +44,16 @@ public class Reversi : Form
                    Console.WriteLine("Beak--");
                    break;}
                 
-                
+         
                 map_stenen[i, t] = new Steen(
-                                              new Point((i+1)*afstand_lijnen, (t+1)*afstand_lijnen),
-                                              new Size(afstand_lijnen, afstand_lijnen),
-                                              diameter_steen
-                                            , t+i);
-                this.Controls.Add(map_stenen[i,t]);
+                                              new Point((i+1)*afstand_lijnen+1, (t+1)*afstand_lijnen+1),
+                                              new Size(afstand_lijnen-1, afstand_lijnen-1),
+                                              diameter_steen,
+                                              (i, t), this);
+                Spelbord.Controls.Add(map_stenen[i,t]);
             }}
-
+            
+            
 
     }
 
@@ -56,28 +64,12 @@ public class Reversi : Form
         for(int t = 1; t<= Grootte+1; t++)
         {
             gr.DrawLine(lijnen, t*afstand_lijnen, afstand_lijnen, t*afstand_lijnen, (Grootte+1)*afstand_lijnen);
-       
-            gr. DrawLine(lijnen, afstand_lijnen, t*afstand_lijnen, (Grootte+1)*afstand_lijnen, t*afstand_lijnen);
-            
+            gr. DrawLine(lijnen, afstand_lijnen, t*afstand_lijnen, (Grootte+1)*afstand_lijnen, t*afstand_lijnen);   
         }
-        
-        for(int t = 0; t < Grootte; t++)
-        {
-           for (int i = 0; i < Grootte; i++)
-            {
-                //int ber = (t+1)*afstand_lijnen;
-        
-                if (i>=Grootte){
-                   Console.WriteLine("Beak--");
-                   break;}
-                
-                map_stenen[i,t].Teken(gr);
-                gr.FillRectangle(Brushes.Red, (i+1)*afstand_lijnen, (t+1)*afstand_lijnen, 4,4);
-              
-            
-                Console.WriteLine ($"i: {i}, t: {t} Grootte: {i<Grootte-1}");
-            }
-        }
+    }
+
+    public void ontvangen((int, int) a){
+        Console.WriteLine($"\e[31ma: {a}\e[0m");
     }
 
 
@@ -85,40 +77,75 @@ public class Reversi : Form
 
 public class Steen: Label
 {
-    int state = 1; //Lege staat = 0
+    int state = 0; //Lege staat = 0
     int diameter;
     int midden;
-    int straal;
+    bool steen_aanklikbaar;
 
-    int nummer;
+    (int, int) plek;
 
-    public Steen(Point pos, Size Sized, int diameter_steen, int nummer)
+    Reversi bord_waar_steen_staat;
+
+    public Steen(Point pos, Size Sized, int diameter_steen, (int, int) nummer, Reversi r)
     {
         this.Location = pos;
         this.Size = Sized;
         diameter = diameter_steen;
-        midden = this.Size.Width / 2;
-        straal = diameter_steen/2;
-        this.nummer = nummer;
+  
+        midden = (this.Width - diameter)/2;
+        this.plek = nummer;
+        bord_waar_steen_staat = r;
         Console.WriteLine(this.Location.X + "Location" + this.Location.Y);
+        this.MouseClick += Teken;
+        this.MouseClick += vertel_positie;
+        this.Paint += Teken;
+        steen_aanklikbaar = true;
         
     }
 
-    public void Teken(Graphics gr)
+
+
+    public void Teken(object o, PaintEventArgs pea)
     {   
-        Console.WriteLine(this.Location + ": Location steen van: " + nummer.ToString());
+        Graphics gr = pea.Graphics;
+        Console.WriteLine(this.Location + ": Location steen van: " + plek.ToString());
         if (state == 1)
         {
-     
            Brush b = new SolidBrush(Color.Red);
-           Console.WriteLine("X-");
-           gr.FillRectangle(b, this.Location.X, this.Location.Y, 10, 10);
-           gr.FillEllipse(b,this.Location.X + midden, this.Location.Y +midden, straal*2, straal*2);
+           gr.FillEllipse(b,midden, midden, diameter, diameter);
         
         } else if (state == 2)
         {
-             Brush b = new SolidBrush(Color.Blue);
-           gr.FillEllipse(b,midden-straal, midden - straal, straal*2, straal*2);
+           Brush b = new SolidBrush(Color.Blue);
+           gr.FillEllipse(b,midden, midden, diameter, diameter);
+        } else if (state == 3)
+        {
+            gr.DrawEllipse(Pens.Black,midden, midden, diameter, diameter);
         }
+
     }
+    public void Teken(object o, MouseEventArgs mea)
+    {
+        if (steen_aanklikbaar)
+            state = 3;
+            this.Invalidate();
+    }
+    
+    public void vertel_positie(object o, MouseEventArgs mea)
+    {
+        bord_waar_steen_staat.ontvangen(plek);
+    }
+
+    public void set_aanklikbaar(bool steen_aanklikbaar)
+    {
+        this.steen_aanklikbaar = steen_aanklikbaar;
+    }
+
+    public int krijg_state()
+    {
+        return state;
+    }
+
+
 }
+

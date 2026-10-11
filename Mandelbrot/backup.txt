@@ -1,0 +1,39 @@
+                if (status == speler && !flag_mogelijk_valide_locatie){
+                    Console.WriteLine($"\e[34m XXXX------ {(i,j)}\e[0m");
+                    flag_mogelijk_valide_locatie = true;
+                    tijdelijke_plekken.Append((j,i));
+                    reden_valide = 1;
+                    continue;
+                }         
+                else if (flag_steen_ertussen && status == speler)
+                {
+                    reden_valide = 0;
+                    flag_steen_ertussen = false;
+                    continue;
+                }
+                
+                else if (status == wissel() && flag_mogelijk_valide_locatie)
+                {
+                    tijdelijke_plekken.Append((j,i));
+                    flag_steen_ertussen = true;
+                    if (flag_komt_van_lege_plek)
+                    {
+                        wissel_voor_lege_plek = true;
+                        flag_komt_van_lege_plek = false;
+                    }
+                    Console.WriteLine($"\e[35m XXXX------ {(j,i)} \e[0m");
+                    continue;
+                }
+                
+                
+                 else if (status == 0 && flag_mogelijk_valide_locatie && flag_steen_ertussen)
+                {   
+                    
+                    valide_plekken.Add((j,i));
+                    tijdelijke_plekken.Append((j,i));
+                    Console.WriteLine($"\e[31m XXXX------ Valide plekken: {(j,i)} \e[0m");
+                    reden_valide = 0;
+                    flag_mogelijk_valide_locatie = false;
+                    flag_steen_ertussen = false;
+                    continue;
+                } 

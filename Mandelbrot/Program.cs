@@ -352,11 +352,11 @@ public class Reversi : Form
         if (speler1_stenen > speler2_stenen)
         {
             wie_gewonnen.ForeColor = Color.Red;
-            wie_gewonnen.Text = "Seler 1 heeft gewonnen!";
+            wie_gewonnen.Text = "Speler 1 heeft gewonnen!";
         } else if (speler2_stenen > speler1_stenen)
         {
             wie_gewonnen.ForeColor = Color.Blue;
-            wie_gewonnen.Text = "Seler 2 heeft gewonnen!";
+            wie_gewonnen.Text = "Speler 2 heeft gewonnen!";
         } else
         {
             wie_gewonnen.ForeColor = Color.Black;
@@ -391,7 +391,7 @@ public class Reversi : Form
         return Grootte;
     }
 
-    public void update_wie_aanzet(int speler)
+    public void update_wie_aanzet()
     {
         wie_aanzet.Invalidate();
     }
@@ -642,7 +642,7 @@ public class Gameloop
         
 
         
-        reversi.update_wie_aanzet(speler);
+
         //Bereken valide zetten
         int wie = wissel_speler();
         reversi.wie_is_er_aan_zet(wie);
@@ -654,7 +654,7 @@ public class Gameloop
         {
            
             wie = wissel_speler();
-            reversi.update_wie_aanzet(wie);
+            reversi.wie_is_er_aan_zet(wie);
             informatie = valide_zetten();
 
             if(check_of_speler_kan_zetten(informatie.Item1))
@@ -662,7 +662,7 @@ public class Gameloop
                 reversi.bepaal_winnaar();
             }
         }
-    
+        reversi.update_wie_aanzet();
         reversi.zet_aangegeven_stenen_op_aanklikbaar(informatie.Item1, speler);
     }
     

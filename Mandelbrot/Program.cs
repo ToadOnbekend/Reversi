@@ -21,6 +21,8 @@ public class Reversi : Form
     Label player1;
 
     Label player2;
+
+  
     
     Label wie_aanzet;
 
@@ -33,7 +35,7 @@ public class Reversi : Form
     int diameter_steen = 45;
 
     int afstand_lijnen = 50;
-    int Grootte = 10; 
+    int Grootte = 6; 
 
     Gameloop gameloop;
     Steen[,] map_stenen;
@@ -43,10 +45,14 @@ public class Reversi : Form
     bool spel_geinitialiseerd = false;
 
     bool hint_aan = false;
-    (List<(int,int)>, Dictionary<string, List<(int,int)>>) informatie;
+    
 
     int speler1_stenen = 2;
     int speler2_stenen = 2;
+
+      Button nieuw_spel_knop;
+
+
 
     public Reversi()
     {   
@@ -54,17 +60,14 @@ public class Reversi : Form
      
 
         menuStrip = new MenuStrip();
-        menu = new ToolStripDropDownButton("Guide");
-        menu.DropDownItems.Add("Close", null);
-        menuStrip.Items.Add(menu);
+        // menu.DropDownItems.Add("Close", null);
+        // menuStrip.Items.Add(menu);
 
-        menu = new ToolStripDropDownButton("New Game");
-        menu.DropDownItems.Add("New 4x4", null);
-        menu.DropDownItems.Add("New 6x6", null);
-        menu.DropDownItems.Add("New 8x8", null);
-        menuStrip.Items.Add(menu);
-
-        menu = new ToolStripDropDownButton("Help!");
+        menu = new ToolStripDropDownButton("Nieuw spel: kies grootte");
+        menu.DropDownItems.Add("Nieuw 4x4", null, nieuw_spel_4_4);
+        menu.DropDownItems.Add("Nieuw 6x6", null, nieuw_spel_6_6);
+        menu.DropDownItems.Add("Nieuw 8x8", null, nieuw_spel_8_8);
+        menu.DropDownItems.Add("Nieuw 10x10", null, nieuw_spel_10_10);
         menuStrip.Items.Add(menu);
 
 
@@ -98,8 +101,16 @@ public class Reversi : Form
         Help = new Button();
         Help.Text = "Help";
         Help.Size = new Size(100, 30);
-        Help.Location = new Point(320, 60);
+        Help.Location = new Point(320, 75);
         Help.Cursor = Cursors.Help;
+
+        nieuw_spel_knop = new Button();
+        nieuw_spel_knop.Text = "Nieuw spel";
+        nieuw_spel_knop.Size = new Size(100, 30);
+        nieuw_spel_knop.Location = new Point(320, 45);
+        nieuw_spel_knop.Cursor = Cursors.Hand;
+        nieuw_spel_knop.Click += knop_nieuw_spel;
+
 
         Help.Click += help_functie_aanuitzetten;        
 
@@ -112,20 +123,20 @@ public class Reversi : Form
         wie_gewonnen.Location = new Point(430, 63);
         wie_gewonnen.Font = new Font("Arial", 16, FontStyle.Bold);
 
-            
+
 
 
         wie_aanzet.Paint += teken_wie_aanzet;
 
+
         menuStrip.Items.Add(menu);
+        Controls.Add(nieuw_spel_knop);
         Controls.Add(wie_gewonnen);
         Controls.Add(wie_aanzet);
         Controls.Add(Help);
         Controls.Add(player1);
         Controls.Add(player2);
         Controls.Add(menuStrip);
-
-        gameloop = new Gameloop(this);
         Spelbord.Paint += Initialiseer_bord;
 
         
@@ -137,6 +148,50 @@ public class Reversi : Form
 
         wissel_speler = 2;
              
+    }
+
+    void knop_nieuw_spel(object o, EventArgs e)
+    {
+        nieuw_spel(Grootte);
+    }
+    public void nieuw_spel_4_4(object o, EventArgs ea)
+    {
+        nieuw_spel(4);
+    }
+
+    public void nieuw_spel_6_6(object o, EventArgs ea)
+    {
+        nieuw_spel(6);
+    }
+
+    public void nieuw_spel_8_8(object o, EventArgs ea)
+    {
+        nieuw_spel(8);
+    }
+
+    public void nieuw_spel_10_10(object o, EventArgs ea)
+    {
+        nieuw_spel(10);
+    }
+
+    private void nieuw_spel(int grootte)
+    {
+        // foreach (Control control in Spelbord.Controls)
+        // {
+        //     control.Dispose();
+        // }
+
+        Spelbord.Controls.Clear();
+        spel_geinitialiseerd = false;
+        Grootte = grootte;
+        wissel_speler = 2;
+        speler1_stenen = 2;
+        speler2_stenen = 2;
+        wie_gewonnen.Text = "";
+        player1.Text = $"Speler 1 stenen: {speler1_stenen}";
+        player2.Text = $"Speler 2 stenen: {speler2_stenen}";
+        map_stenen = new Steen[Grootte, Grootte];
+        Spelbord.Invalidate();
     }
 
     public void help_functie_aanuitzetten(object o, EventArgs ea)
@@ -165,8 +220,8 @@ public class Reversi : Form
             
             Maak_en_plaats_begin_stenen();
             spel_geinitialiseerd = true;
-            informatie = gameloop.valide_zetten();
-            zet_aangegeven_stenen_op_aanklikbaar(informatie.Item1, wissel_speler);
+            gameloop = new Gameloop(this);
+            zet_aangegeven_stenen_op_aanklikbaar(gameloop.valide_zetten().Item1, wissel_speler);
         }
        
         TekenspelBord(o, pea);
@@ -324,76 +379,45 @@ public class Reversi : Form
                 map_stenen[steen.Item1, steen.Item2].Invalidate();
             }
         }
-        else
-        {
-            Console.WriteLine($"Key bestaat niet: {key}");
-        }
     }
 
 
-    public void ontvangen((int, int) a, int st, bool aan, Steen s, MouseEventArgs mea){
-
-        zet_hint_stenen_uit();
-        Console.WriteLine($"\e[31ma: {a}\e[0m st {st} aan {aan}");
-
-        Console.WriteLine($"Speler nu aanzet: {wissel_speler}");
-
-        if (mea.Button == MouseButtons.Left)
-            s.geef_state(wissel_speler);
-        else if (mea.Button == MouseButtons.Right)
-            s.geef_state(wissel_speler);
-
-        flip_stenen(informatie.Item2, a);
-        tel_stenen();
-
-        Console.WriteLine($"Item 2: {informatie.Item2.Count}");    
-        
-
-        zet_alle_stenen_op_niet_aanklikbaar();
-        
-
-        
-        wie_aanzet.Invalidate();
-        //Bereken valide zetten
-        wissel_speler = gameloop.wissel_speler();
-        informatie = gameloop.valide_zetten();
-
-        Console.WriteLine($"Valide zetten: {informatie.Item1.Count}");
-
-        if (informatie.Item1.Count == 0)
-        {
-           
-            wissel_speler = gameloop.wissel_speler();
-            informatie = gameloop.valide_zetten();
-
-            if(gameloop.check_of_speler_kan_zetten(informatie.Item1))
-            {
-                bepaal_winnaar();
-            }
-        }
-    
-        zet_aangegeven_stenen_op_aanklikbaar(informatie.Item1, wissel_speler);
-
+    public void ontvangen((int, int) a, int st, bool aan, Steen s, MouseEventArgs _){
+        gameloop.speler_aanzet(a, st, aan, s);
     }
 
     public int geef_grootte_bord()
     {
         return Grootte;
     }
+
+    public void update_wie_aanzet(int speler)
+    {
+        wie_aanzet.Invalidate();
+    }
+
+    public void wie_is_er_aan_zet(int speler)
+    {
+        wissel_speler = speler;
+    }
+
 }
 
 public class Gameloop
 {
+    (List<(int,int)>, Dictionary<string, List<(int,int)>>) informatie;
     int speler = 2;     
 
     bool speler_1_kan_niet_zetten = false;
     bool speler_2_kan_niet_zetten = false;
     Reversi reversi;
 
+    int[,] status_map;
+
     public Gameloop(Reversi r)
     {
         reversi = r;
-
+        informatie = valide_zetten();
     }
 
     public int wissel_speler()
@@ -422,7 +446,7 @@ public class Gameloop
 
     public (List<(int,int)>, Dictionary<string, List<(int,int)>>) valide_zetten()
     {   
-        int[,] status_map = reversi.alle_stenen_states();
+        status_map = reversi.alle_stenen_states();
         int grootte = reversi.geef_grootte_bord();
        List<(int, int)> valide_plekken = new List<(int, int)>();
        List<(int, int)> tijdelijke_plekken = new List<(int, int)>();
@@ -594,6 +618,53 @@ public class Gameloop
     {
          return valide_plekken.Count == 0;
     }
+
+
+    public void speler_aanzet((int, int) a, int st, bool aan, Steen s)
+    {
+        reversi.zet_hint_stenen_uit();
+        Console.WriteLine($"\e[31ma: {a}\e[0m st {st} aan {aan}");
+
+        Console.WriteLine($"Speler nu aanzet: {wissel_speler}");
+
+       
+        s.geef_state(speler);
+  
+
+
+        reversi.flip_stenen(informatie.Item2, a);
+        reversi.tel_stenen();
+
+        Console.WriteLine($"Item 2: {informatie.Item2.Count}");    
+        
+
+        reversi.zet_alle_stenen_op_niet_aanklikbaar();
+        
+
+        
+        reversi.update_wie_aanzet(speler);
+        //Bereken valide zetten
+        int wie = wissel_speler();
+        reversi.wie_is_er_aan_zet(wie);
+        informatie = valide_zetten();
+
+        Console.WriteLine($"Valide zetten: {informatie.Item1.Count}");
+
+        if (informatie.Item1.Count == 0)
+        {
+           
+            wie = wissel_speler();
+            reversi.update_wie_aanzet(wie);
+            informatie = valide_zetten();
+
+            if(check_of_speler_kan_zetten(informatie.Item1))
+            {
+                reversi.bepaal_winnaar();
+            }
+        }
+    
+        reversi.zet_aangegeven_stenen_op_aanklikbaar(informatie.Item1, speler);
+    }
     
 
 }
@@ -717,4 +788,3 @@ public class Steen: Label
         
     }
 }
-

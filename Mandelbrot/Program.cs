@@ -6,6 +6,7 @@ public class Program
 {
     static void Main(string[] str)
 {
+      Application.EnableVisualStyles();
 Application.Run(new Reversi());
 
 }
@@ -17,12 +18,14 @@ public class Reversi : Form
     Label Spelbord;
     Label Wie_aanzet;
     ComboBox Bordgrootte;
-
-
     Label player1;
 
     Label player2;
     
+    Label wie_aanzet;
+
+    Label wie_gewonnen;
+
     MenuStrip menuStrip;
 
     ToolStripDropDownItem menu;
@@ -30,7 +33,7 @@ public class Reversi : Form
     int diameter_steen = 45;
 
     int afstand_lijnen = 50;
-    int Grootte = 8; 
+    int Grootte = 10; 
 
     Gameloop gameloop;
     Steen[,] map_stenen;
@@ -38,11 +41,16 @@ public class Reversi : Form
     int wissel_speler;
 
     bool spel_geinitialiseerd = false;
+
+    bool hint_aan = false;
     (List<(int,int)>, Dictionary<string, List<(int,int)>>) informatie;
+
+    int speler1_stenen = 2;
+    int speler2_stenen = 2;
 
     public Reversi()
     {   
-        ClientSize = new Size(800,600);
+        ClientSize = new Size(800,800);
      
 
         menuStrip = new MenuStrip();
@@ -61,23 +69,58 @@ public class Reversi : Form
 
 
         Spelbord = new Label();
-        Spelbord.Size = new Size(500, 500);
+        Spelbord.Size = new Size(600, 600);
         Spelbord.Location = new Point (60, 60);
+    
 
         player1 = new Label();
         player2 = new Label();
 
-        player1.Text = $"Player 1 Stenen";
-        player2.Text = $"Player 2 Stenen:";
+        player1.Size = new Size(250, 20);
+        player2.Size = new Size(250, 20);
+
+        player1.Text = $"Speler 1 stenen: {speler1_stenen}";
+        player2.Text = $"Speler 2 stenen: {speler2_stenen}";
+    
         player1.ForeColor = Color.Red;
         player2.ForeColor = Color.Blue;
 
+        player1.Font = new Font("Arial", 14, FontStyle.Bold);
+        player2.Font = new Font("Arial", 14, FontStyle.Bold);
+
+        player1.Location =  new Point(100, 50);
+        player2.Location =  new Point(100, 75);
+
+        player1.Font = new Font("Arial", 14, FontStyle.Bold);
+        player2.Font = new Font("Arial", 14, FontStyle.Bold);
+
+
+        Help = new Button();
+        Help.Text = "Help";
+        Help.Size = new Size(100, 30);
+        Help.Location = new Point(320, 60);
+        Help.Cursor = Cursors.Help;
+
+        Help.Click += help_functie_aanuitzetten;        
+
+        wie_aanzet = new Label();
+        wie_aanzet.Size = new Size(40, 65);
+        wie_aanzet.Location = new Point(55, 40);
+
+        wie_gewonnen = new Label();
+        wie_gewonnen.Size = new Size(300, 30);
+        wie_gewonnen.Location = new Point(430, 63);
+        wie_gewonnen.Font = new Font("Arial", 16, FontStyle.Bold);
+
+            
+
+
+        wie_aanzet.Paint += teken_wie_aanzet;
+
         menuStrip.Items.Add(menu);
-
-
-        player1.Location =  new Point(100, 25);
-        player2.Location =  new Point(100, 50);
-
+        Controls.Add(wie_gewonnen);
+        Controls.Add(wie_aanzet);
+        Controls.Add(Help);
         Controls.Add(player1);
         Controls.Add(player2);
         Controls.Add(menuStrip);
@@ -85,7 +128,9 @@ public class Reversi : Form
         gameloop = new Gameloop(this);
         Spelbord.Paint += Initialiseer_bord;
 
-        this.Controls.Add(Spelbord);    
+        
+
+        Controls.Add(Spelbord);    
 
 
         map_stenen = new Steen[Grootte, Grootte];     
@@ -94,6 +139,24 @@ public class Reversi : Form
              
     }
 
+    public void help_functie_aanuitzetten(object o, EventArgs ea)
+    {
+        hint_aan = !hint_aan;
+        if (hint_aan)
+        {
+            foreach (Steen steen in map_stenen)
+            {
+                if (steen.vertel_aanklikbaar())
+                {
+                    steen.geef_state(3);
+                    steen.Invalidate();
+                }
+            }
+        } else
+        {
+            zet_hint_stenen_uit();
+        }
+    }
     public void Initialiseer_bord(object o, PaintEventArgs pea)
     {
         // Zorgt ervoor dat de stenen niet worden overschreven als het bord opnieuw wordt getekend.
@@ -120,6 +183,7 @@ public class Reversi : Form
                                               diameter_steen,
                                               (i, t), 
                                               this);
+                map_stenen[i,t].Cursor = Cursors.Hand;
                 if ((i+1 == Grootte/2 || i+1 == Grootte/2+1)  && (t+1 == Grootte/2 || t+1 == Grootte / 2 + 1))
                 {  
                     //map_stenen[i,t].set_aanklikbaar(false);
@@ -139,6 +203,7 @@ public class Reversi : Form
     public void TekenspelBord(object o, PaintEventArgs pea)
     {   
         Graphics gr = pea.Graphics;
+        gr.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
         Pen lijnen = new Pen(Color.Black, 1);
         for(int t = 1; t<= Grootte+1; t++)
         {
@@ -152,6 +217,21 @@ public class Reversi : Form
         foreach (Steen steen in map_stenen)
         {
             steen.set_aanklikbaar(false);
+        }
+    }
+
+    public void teken_wie_aanzet(object o, PaintEventArgs pea)
+    {
+        Graphics gr = pea.Graphics;
+        gr.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        if (wissel_speler == 1)
+        {
+            Brush b = new SolidBrush(Color.Red);
+            gr.FillEllipse(b, 18, 11, 20, 20);
+        } else if (wissel_speler == 2)
+        {
+            Brush b = new SolidBrush(Color.Blue);
+            gr.FillEllipse(b, 18, 36, 20, 20);
         }
     }
 
@@ -171,11 +251,12 @@ public class Reversi : Form
     public void zet_aangegeven_stenen_op_aanklikbaar(List<(int,int)> Z, int speler)
     {
         foreach((int,int) z in Z)
-        {
-            map_stenen[z.Item1, z.Item2].stel_in_op_valide_hint(speler);
+        {   
+            if (hint_aan)
+                map_stenen[z.Item1, z.Item2].stel_in_op_valide_hint(speler);
+
             map_stenen[z.Item1, z.Item2].set_aanklikbaar(true);
             Console.WriteLine($"zz is: {map_stenen[z.Item1, z.Item2].vertel_aanklikbaar()}");
-            
         } 
     }
 
@@ -188,6 +269,43 @@ public class Reversi : Form
                 steen.geef_state(0);
                 steen.Invalidate();
             }
+        }
+    }
+    
+    public void tel_stenen()
+    {   
+        int steen_speler1 = 0;
+        int steen_speler2 = 0;
+        foreach (Steen steen in map_stenen)
+        {
+            if (steen.geef_state_terug() == 1)
+                steen_speler1++;
+            else if (steen.geef_state_terug() == 2)
+                steen_speler2++;
+        }
+
+        player1.Text = $"Speler 1 stenen: {steen_speler1}";
+        player2.Text = $"Speler 2 stenen: {steen_speler2}";
+        speler1_stenen = steen_speler1;
+        speler2_stenen = steen_speler2;
+        
+    }
+
+    public void bepaal_winnaar()
+    {
+        tel_stenen();
+        if (speler1_stenen > speler2_stenen)
+        {
+            wie_gewonnen.ForeColor = Color.Red;
+            wie_gewonnen.Text = "Seler 1 heeft gewonnen!";
+        } else if (speler2_stenen > speler1_stenen)
+        {
+            wie_gewonnen.ForeColor = Color.Blue;
+            wie_gewonnen.Text = "Seler 2 heeft gewonnen!";
+        } else
+        {
+            wie_gewonnen.ForeColor = Color.Black;
+            wie_gewonnen.Text = "Remise!";
         }
     }
 
@@ -212,8 +330,9 @@ public class Reversi : Form
         }
     }
 
+
     public void ontvangen((int, int) a, int st, bool aan, Steen s, MouseEventArgs mea){
-        
+
         zet_hint_stenen_uit();
         Console.WriteLine($"\e[31ma: {a}\e[0m st {st} aan {aan}");
 
@@ -223,20 +342,38 @@ public class Reversi : Form
             s.geef_state(wissel_speler);
         else if (mea.Button == MouseButtons.Right)
             s.geef_state(wissel_speler);
+
         flip_stenen(informatie.Item2, a);
+        tel_stenen();
+
         Console.WriteLine($"Item 2: {informatie.Item2.Count}");    
         
 
         zet_alle_stenen_op_niet_aanklikbaar();
         
 
-        wissel_speler = gameloop.wissel_speler();
-        //Bereken valide zetten
-
-        informatie = gameloop.valide_zetten();
         
-  
+        wie_aanzet.Invalidate();
+        //Bereken valide zetten
+        wissel_speler = gameloop.wissel_speler();
+        informatie = gameloop.valide_zetten();
+
+        Console.WriteLine($"Valide zetten: {informatie.Item1.Count}");
+
+        if (informatie.Item1.Count == 0)
+        {
+           
+            wissel_speler = gameloop.wissel_speler();
+            informatie = gameloop.valide_zetten();
+
+            if(gameloop.check_of_speler_kan_zetten(informatie.Item1))
+            {
+                bepaal_winnaar();
+            }
+        }
+    
         zet_aangegeven_stenen_op_aanklikbaar(informatie.Item1, wissel_speler);
+
     }
 
     public int geef_grootte_bord()
@@ -248,6 +385,9 @@ public class Reversi : Form
 public class Gameloop
 {
     int speler = 2;     
+
+    bool speler_1_kan_niet_zetten = false;
+    bool speler_2_kan_niet_zetten = false;
     Reversi reversi;
 
     public Gameloop(Reversi r)
@@ -292,7 +432,7 @@ public class Gameloop
 
         bool flag_mogelijk_valide_locatie =  false;
         int reden_valide = 0; //1 als op steen van speler staat (die aan de beurt is)
-                             //2 als op lege plek staan
+                              //2 als op lege plek staan
         bool flag_steen_ertussen = false; 
         bool wissel_voor_lege_plek = false;
         bool flag_komt_van_lege_plek = false;
@@ -308,30 +448,12 @@ public class Gameloop
            anti_skip = false;
         }
 
-        void voeg_stenen_toe_die_veranderen_bij_validezet(string key)
-        {
-            // if (!dict_alle.ContainsKey(key)){
-            //     dict_alle.Add(key, tijdelijke_plekken);
-            //     Console.WriteLine($"Tijdelijke plekken {tijdelijke_plekken[0]} XXX");
-            //     dict_alle.TryGetValue(key, out List<(int,int)> tussen_plekken);
-            //     Console.WriteLine($"\e[42m{key}Tijdelijke plekken {tussen_plekken.Count} XXX]\e[0m");
-            // } else {
-            //     dict_alle.TryGetValue(key, out List<(int,int)> tussen_plekken);
-            //     tussen_plekken.AddRange(tijdelijke_plekken);
-            //     Console.WriteLine($"\e42mTijdelijke plekken {tussen_plekken.Count} XXX]\e[0m");
-            //     dict_alle.Remove(key, out List<(int,int)> oude_plekken);
-            //     dict_alle.Add(key, tussen_plekken);
-            //     Console.WriteLine($"Nieuwe plekken {dict_alle.Count} XXX");
-            // }
-            // Console.WriteLine($"Dict_alle---------------: {dict_alle.Count} XXX");
-            if (!dict_alle.ContainsKey(key))
-{
-    dict_alle[key] = new List<(int, int)>(tijdelijke_plekken);
-}
-else
-{
-    dict_alle[key].AddRange(tijdelijke_plekken);
-}
+        void voeg_stenen_toe_die_veranderen_bij_validezet(string key){
+            if (!dict_alle.ContainsKey(key)){
+                dict_alle[key] = new List<(int, int)>(tijdelijke_plekken);
+            } else {
+                dict_alle[key].AddRange(tijdelijke_plekken);
+            }
         }
     
         void algorithme(int j, int i){
@@ -344,13 +466,12 @@ else
                 
             if (status == speler && flag_mogelijk_valide_locatie && flag_steen_ertussen && flag_komt_van_lege_plek){
                 valide_plekken.Add(mogelijke_plek_als_begin_met_lege_vak);
-                // sla lijst op tussen begin eind valide plek
+
                 flag_mogelijk_valide_locatie = true;
                 anti_skip = true;
                 flag_steen_ertussen = false;
                 flag_komt_van_lege_plek = false;
-                //
-
+        
                 voeg_stenen_toe_die_veranderen_bij_validezet($"{mogelijke_plek_als_begin_met_lege_vak.Item1}-{mogelijke_plek_als_begin_met_lege_vak.Item2}");
 
                 tijdelijke_plekken = [];
@@ -465,11 +586,14 @@ else
             }
             reset_flags();
         }
-
        Console.WriteLine($"Valide plekken\e[41m: {dict_alle.Count} XXX\e[0m"); 
        return (valide_plekken, dict_alle);
     }
 
+    public bool check_of_speler_kan_zetten(List<(int,int)> valide_plekken)
+    {
+         return valide_plekken.Count == 0;
+    }
     
 
 }
@@ -506,7 +630,7 @@ public class Steen: Label
     {   
         
         Graphics gr = pea.Graphics;
-        Console.WriteLine(this.Location + ": Location steen van: " + plek.ToString());
+        gr.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
         if (state == 1)
         {
            Brush b = new SolidBrush(Color.Red);

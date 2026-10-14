@@ -6,6 +6,7 @@ public class Program
 { 
     static void Main(string[] str)
     {
+        Application.EnableVisualStyles();
         Application.Run(new Reversi());
 
     }

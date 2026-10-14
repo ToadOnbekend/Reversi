@@ -150,7 +150,8 @@ public class Reversi : Form
     //Plaats de stenen aan het begin van het spel
     public void Maak_en_plaats_begin_stenen(){
         //Houd bij waar de rode en blauwe steen moeten staan
-        int[] speler_plek_begin = [2,1,1,2]; int w = 0;
+        int[] speler_plek_begin = new int[] {2,1,1,2}; 
+        int w = 0;
         map_stenen = new Steen[Grootte, Grootte];
 
         for(int t = 0; t < Grootte; t++){

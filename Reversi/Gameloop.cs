@@ -1,30 +1,38 @@
 using System;
+using System.Collections.Generic;
 using System.Windows.Forms;
-
 
 public class Gameloop
 {
-    (List<(int,int)>, Dictionary<string, List<(int,int)>>) informatie;
-    /* Voorbeeld van hoe deze  Dictionary<string, List<(int,int)>> eruit ziet:
-    dict = {
-        "1-2": [(1,3), (1,4)],
-        "2-3": [(3,3), (4,4), (5,5)],
-        ...
-    }
-    $"{x}-{y}" is de key (locatie van aangeklikte valide steen)
-    */ 
+    // Using standard fields instead of class-level tuples
+    public List<ValueTuple<int, int>> valide_plekken_lijst;
+    public Dictionary<string, List<ValueTuple<int, int>>> dict_alle;
+    
     int speler = 2;     
     Reversi reversi;
     int[,] status_map;
-    public Gameloop(Reversi r){
+
+    // Helper flags moved to class scope
+    bool flag_mogelijk_valide_locatie = false;
+    bool flag_steen_ertussen = false; 
+    bool flag_komt_van_lege_plek = false;
+    int vorige_steen = 0;
+    ValueTuple<int, int> mogelijke_plek_als_begin_met_lege_vak = (0, 0);
+    List<ValueTuple<int, int>> tijdelijke_plekken = new List<ValueTuple<int, int>>();
+
+    public Gameloop(Reversi r)
+    {
         reversi = r;
-        informatie = valide_zetten();
+        valide_plekken_lijst = new List<ValueTuple<int, int>>();
+        dict_alle = new Dictionary<string, List<ValueTuple<int, int>>>();
+        valide_zetten();
     }
 
-    //Wisse speler en geef de speler terug die nu aan de beurt is
-    public int wissel_speler(){   
+    public int wissel_speler()
+    {   
         Console.WriteLine("Gewisseld");
-        switch(speler){
+        switch(speler)
+        {
             case 1:
                 speler = 2;
                 return 2;
@@ -36,219 +44,209 @@ public class Gameloop
         }
     }
 
-    public int wissel(){
-        if (speler == 1){
+    public int wissel()
+    {
+        if (speler == 1)
+        {
             return 2;
-        } else { 
+        } 
+        else 
+        { 
             return 1;
         }
     }
 
-    //Bepaalt alle valide zetten van de huidige speler en welke stenen er bij welke valide zet moeten worden omgedraaid
-    public (List<(int,int)>, Dictionary<string, List<(int,int)>>) valide_zetten(){   
+    private void ResetFlags()
+    {
+       flag_mogelijk_valide_locatie = false;
+       flag_steen_ertussen = false;
+       flag_komt_van_lege_plek = false;
+    }
+
+    private void VoegStenenToe(string key)
+    {
+        if (!dict_alle.ContainsKey(key))
+        {
+            dict_alle[key] = new List<ValueTuple<int, int>>(tijdelijke_plekken);
+        } 
+        else 
+        {
+            dict_alle[key].AddRange(tijdelijke_plekken);
+        }
+    }
+
+    private void VindtValideZetten(int j, int i)
+    {
+        int status = status_map[j, i];
+
+        if (vorige_steen == speler)
+        {
+            flag_steen_ertussen = false;
+            tijdelijke_plekken.Clear();
+        }
+            
+        if (status == speler && flag_mogelijk_valide_locatie && flag_steen_ertussen && flag_komt_van_lege_plek)
+        {
+            valide_plekken_lijst.Add(mogelijke_plek_als_begin_met_lege_vak);
+            flag_mogelijk_valide_locatie = true; 
+            flag_steen_ertussen = false; 
+            flag_komt_van_lege_plek = false;
+            
+            VoegStenenToe($"{mogelijke_plek_als_begin_met_lege_vak.Item1}-{mogelijke_plek_als_begin_met_lege_vak.Item2}");
+            tijdelijke_plekken.Clear();
+            vorige_steen = speler;
+        } 
+        else if (status == 0 && flag_mogelijk_valide_locatie && flag_steen_ertussen && !flag_komt_van_lege_plek)
+        {
+            valide_plekken_lijst.Add(new ValueTuple<int, int>(j, i));
+            ResetFlags();
+            VoegStenenToe($"{j}-{i}");
+            tijdelijke_plekken.Clear();
+            vorige_steen = speler;
+        } 
+
+        if (status == 0)
+        {   
+            mogelijke_plek_als_begin_met_lege_vak = new ValueTuple<int, int>(j, i);
+            flag_komt_van_lege_plek = true;
+            flag_mogelijk_valide_locatie = false;
+            tijdelijke_plekken.Clear();
+        } 
+        else if (status == speler)
+        {   
+            flag_komt_van_lege_plek = false;
+            flag_mogelijk_valide_locatie = true;
+            tijdelijke_plekken.Clear();
+        } 
+        else if (status == wissel() && (flag_mogelijk_valide_locatie || flag_komt_van_lege_plek))
+        {
+            flag_steen_ertussen = true;
+            if (flag_komt_van_lege_plek)
+            {
+                flag_mogelijk_valide_locatie = true;
+            }
+            tijdelijke_plekken.Add(new ValueTuple<int, int>(j, i));   
+        } 
+        else
+        {
+            ResetFlags();
+            tijdelijke_plekken.Clear();    
+        }
+        vorige_steen = status;
+    }
+
+    public void valide_zetten()
+    {   
         status_map = reversi.alle_stenen_states();
         int grootte = reversi.geef_grootte_bord();
  
-        List<(int, int)> valide_plekken = new List<(int, int)>();
-        List<(int, int)> tijdelijke_plekken = new List<(int, int)>();
-        (int, int) mogelijke_plek_als_begin_met_lege_vak = (0,0); //Sla het vak op dat leeg is maar mogelijk valide is
-   
-        Dictionary<string, List<(int,int)>> dict_alle = new Dictionary<string, List<(int,int)>>();
+        valide_plekken_lijst.Clear();
+        tijdelijke_plekken.Clear();
+        dict_alle.Clear();
 
-        //Hulp variable om te bepalen of een steen valide is 
-        bool flag_mogelijk_valide_locatie =  false;
-        bool flag_steen_ertussen = false; 
-        bool flag_komt_van_lege_plek = false;
-        int vorige_steen = 0;
-
-        void reset_flags(){
-           flag_mogelijk_valide_locatie = false;
-           flag_steen_ertussen = false;
-           flag_komt_van_lege_plek = false;
+        // Horizontale controle
+        for (int i = 0; i < grootte; i++)
+        {
+            for (int j = 0; j < grootte; j++)
+            {
+                VindtValideZetten(j, i);
+            }
+            ResetFlags();
         }
 
-        //Functie die een steen toevoegd aan de dictionary
-        void voeg_stenen_toe_die_veranderen_bij_validezet(string key){
-            if (!dict_alle.ContainsKey(key)){
-                //Nieuwe valide locatie, voeg toe aan dictionary
-                dict_alle[key] = new List<(int, int)>(tijdelijke_plekken);
-            } else {
-                //Bestaande valide locatie, voeg de stenen toe aan de bestaande lijst
-                dict_alle[key].AddRange(tijdelijke_plekken);
+        // Verticale controle
+        for (int k = 0; k < grootte; k++)
+        {
+            for (int v = 0; v < grootte; v++)
+            {
+                VindtValideZetten(k, v);
             }
-        }
-    
-        //Hoofd functie om valide zetten te vinden en stenen die moeten worden omgedraaid bij een valide zet
-        //Deze functie past de flags aan en voegt de stenen toe aan de dictionary als er een valide zet is gevonden
-        //Deze functie werkt als een state machine en moet door de for-loops in de juiste volgorde worden aangeroepen
-        void vindt_valide_zetten(int j, int i){
-            int status = status_map[j,i];
-
-            // Als de stenen van de huidige speler direct naast elkaar liggen, dan is het geen valide zet
-            if (vorige_steen == speler){
-                flag_steen_ertussen = false;
-                tijdelijke_plekken.Clear();
-            }
-                
-            // Als de huidige steen van de speler is, er een lege plek is geweest en er stenen van de tegenstander ertussen liggen, dan is het een valide zet    
-            if (status == speler && flag_mogelijk_valide_locatie && flag_steen_ertussen && flag_komt_van_lege_plek){
-                valide_plekken.Add(mogelijke_plek_als_begin_met_lege_vak);
-                flag_mogelijk_valide_locatie = true;flag_steen_ertussen = false;flag_komt_van_lege_plek = false;
-                // De steen die volgt kan een steen van de tegenstander zijn dus flag_mogelijke_valide_locatie = true;
-                voeg_stenen_toe_die_veranderen_bij_validezet($"{mogelijke_plek_als_begin_met_lege_vak.Item1}-{mogelijke_plek_als_begin_met_lege_vak.Item2}");
-                tijdelijke_plekken.Clear();
-                vorige_steen = speler;
-
-            // Als de huidige steen leeg is, er een lege plek is geweest en er stenen van de tegenstander ertussen liggen, dan is het een valide zet
-            } else if (status == 0 && flag_mogelijk_valide_locatie && flag_steen_ertussen && !flag_komt_van_lege_plek){
-                valide_plekken.Add((j,i));
-                reset_flags();
-                voeg_stenen_toe_die_veranderen_bij_validezet($"{j}-{i}");
-                tijdelijke_plekken.Clear();
-                vorige_steen = speler;
-            } 
-
-            //Als de huidige steen leeg is, sla deze plek op als mogelijke beginplek voor een valide zet    
-            if (status == 0){   
-                mogelijke_plek_als_begin_met_lege_vak = (j,i);
-                flag_komt_van_lege_plek = true;
-                flag_mogelijk_valide_locatie = false;
-                tijdelijke_plekken.Clear();
-            //Als de huidige steen van de speler is, dan is het een mogelijke valide locatie en kan er een steen van de tegenstander volgen    
-            } else if (status == speler){   
-                flag_komt_van_lege_plek = false;
-                flag_mogelijk_valide_locatie = true;
-                tijdelijke_plekken.Clear();
-            } else if (status == wissel() && (flag_mogelijk_valide_locatie||flag_komt_van_lege_plek)){
-                flag_steen_ertussen = true;
-                if (flag_komt_van_lege_plek)
-                    //Als van een lege locatie komen dan is het alleen maar een mogelijke valide locatie als er een steen van de tegenstander tussen zit
-                    //Het kan zo zijn dat er meerdere lege plekken achter elkaar liggen
-                    flag_mogelijk_valide_locatie = true;
-                tijdelijke_plekken.Add((j,i)); //Voeg de plekken bij die worden beinvloed als er een valide zet is.   
-            } else{
-                reset_flags();
-                tijdelijke_plekken.Clear();    
-            }
-            vorige_steen = status;
-        }
-    
-        //////
-        // Voer de controle uit op alle mogelijke richtingen: horizontaal, verticaal en diagonaal
-        //// 
-
-        // Horizontaale controle
-        for (int i = 0; i < grootte; i++){
-            for (int j = 0; j < grootte; j++){
-                vindt_valide_zetten(j,i);
-            }
-            reset_flags();
-        }
-
-       // Verticale controle
-        for (int k = 0; k < grootte; k++){
-            for (int v = 0; v < grootte; v++){
-                vindt_valide_zetten(k,v);
-            }
-            reset_flags();
+            ResetFlags();
         }
         
-        //////
-        // Diagonale controle
-        ////
-
-        // Diagonale controle: linksboven naar rechtsonder 
-        // Deel 1 | Bovenste helft
-        for (int i = 0; i < grootte; i++){   
-            int tijdelijk = 0    ;
-            for (int j = 0; j < grootte-i; j++){ 
-                vindt_valide_zetten(j,i+tijdelijk);    
+        // Diagonale controle: linksboven naar rechtsonder (Bovenste helft)
+        for (int i = 0; i < grootte; i++)
+        {   
+            int tijdelijk = 0;
+            for (int j = 0; j < grootte - i; j++)
+            { 
+                VindtValideZetten(j, i + tijdelijk);    
                 tijdelijk++;
             }
-            reset_flags();
+            ResetFlags();
         }
 
-        // Diagonale controle: linksboven naar rechtsonder 
-        // Deel 2 | Onderste helft
-        for (int i = 0; i < grootte; i++){   
-            int tijdelijk = 0    ;
-            for (int j = 0; j < i+1; j++){ 
-                vindt_valide_zetten(grootte-1-j,i-tijdelijk);    
+        // Diagonale controle: linksboven naar rechtsonder (Onderste helft)
+        for (int i = 0; i < grootte; i++)
+        {   
+            int tijdelijk = 0;
+            for (int j = 0; j < i + 1; j++)
+            { 
+                VindtValideZetten(grootte - 1 - j, i - tijdelijk);    
                 tijdelijk++;
             }
-            reset_flags();
+            ResetFlags();
         }
 
-        // Diagonale controle: rechtsonder naar linksboven
-        // Deel 1 | Bovenste helft
-        for (int i = grootte-1; i !=-1; i--){   
+        // Diagonale controle: rechtsonder naar linksboven (Bovenste helft)
+        for (int i = grootte - 1; i != -1; i--)
+        {   
             int tijdelijk = 0;        
-            for (int j = 0; j < i+1; j++){ 
-                vindt_valide_zetten(i-tijdelijk,j);    
+            for (int j = 0; j < i + 1; j++)
+            { 
+                VindtValideZetten(i - tijdelijk, j);    
                 tijdelijk++;
             }
-            reset_flags();
+            ResetFlags();
         }
 
-        // Diagonale controle: rechtsonder naar linksboven
-        // Deel 2 | Onderste helft
-        for (int i = 1; i < grootte; i++){  
-            int tijdelijk = 0 ;   
-            for (int j = grootte-1 ; j != i-1 ; j--){ 
-                vindt_valide_zetten(i+tijdelijk,j);    
+        // Diagonale controle: rechtsonder naar linksboven (Onderste helft)
+        for (int i = 1; i < grootte; i++)
+        {  
+            int tijdelijk = 0;   
+            for (int j = grootte - 1; j != i - 1; j--)
+            { 
+                VindtValideZetten(i + tijdelijk, j);    
                 tijdelijk++;
             }
-            reset_flags();
+            ResetFlags();
         }
-
-       return (valide_plekken, dict_alle);
     }
     
-    //Hulp functie om te controleren of er zetten zijn
-    public bool check_of_speler_kan_zetten(List<(int,int)> valide_plekken){
+    public bool check_of_speler_kan_zetten(List<ValueTuple<int, int>> valide_plekken)
+    {
          return valide_plekken.Count == 0;
     }
 
-    //Stappen die worden genomen als een speler een steen heeft aangeklikt, deze functie word aangeroepen door de de reversie class
-    public void speler_aanzet((int, int) a, Steen s)
+    public void speler_aanzet(ValueTuple<int, int> a, Steen s)
     {
         reversi.zet_hint_stenen_uit();
 
-        //Update de aangeklikte steen naar de juiste speler kleur
         s.geef_state(speler);
 
-        reversi.flip_stenen(informatie.Item2, a);
+        reversi.flip_stenen(dict_alle, a);
         reversi.tel_stenen();
 
-        //Zorgt ervoor dat er de stenen niet aanklikbaar zijn totdat de volgende valide stenen zijn bepaald
         reversi.zet_alle_stenen_op_niet_aanklikbaar();
 
         int wie = wissel_speler();
 
-        //Update de speler die aan zet is in de reversi class
         reversi.wie_is_er_aan_zet(wie);
-        informatie = valide_zetten();
+        valide_zetten();
 
-        //Controleert of er nog zetten mogelijk zijn voor de huidige speler
-        if (check_of_speler_kan_zetten(informatie.Item1)){
-
-            //Controleert of de speler die na de huidige speler aanzet is ook nog valide zetten heeft
-            //Er wordt ook direct van speler gewisseld
+        if (check_of_speler_kan_zetten(valide_plekken_lijst))
+        {
             wie = wissel_speler();
             reversi.wie_is_er_aan_zet(wie);
-            informatie = valide_zetten();
+            valide_zetten();
             
-            //Controleert of de speler die na de huidige speler aanzet is ook nog valide zetten heeft
-            if(check_of_speler_kan_zetten(informatie.Item1)){
-                //Geen valide zetten meer voor beide spelers, bepaal de winnaar
+            if (check_of_speler_kan_zetten(valide_plekken_lijst))
+            {
                 reversi.bepaal_winnaar();
             }
         }
         
-        //Laat de reversie class het bolletje bij de huidige speler aanzet tekenen
         reversi.update_wie_aanzet();
-
-        //Zet de stenen die valide zijn op aanklikbaar
-        reversi.zet_aangegeven_stenen_op_aanklikbaar(informatie.Item1, speler);
+        reversi.zet_aangegeven_stenen_op_aanklikbaar(valide_plekken_lijst, speler);
     }
 }

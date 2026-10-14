@@ -2,6 +2,7 @@
 using System.Drawing;
 using System.Windows.Forms;
 
+namespace ReversiGame {
 public class Program
 { 
     static void Main(string[] str)
@@ -10,4 +11,5 @@ public class Program
         Application.Run(new Reversi());
 
     }
+}
 }
